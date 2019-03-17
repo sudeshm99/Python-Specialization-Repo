@@ -34,10 +34,11 @@ for line in fh:
 
 	try:
 		data = cur.fetchone()[0]
-		print(data,'Found in database',address)
+		print('Found in database',address)
 		continue
 	except:
 		pass
+		count = count+1
 
 	parms = dict()
 	parms['query'] = address
@@ -46,7 +47,6 @@ for line in fh:
 	uh = urllib.request.urlopen(url,context=ctx)
 	data = uh.read().decode()
 	print('Retrived',len(data),'charactors',data[:20].replace('\n',' '))
-	count = count+1
 
 	try:
 		js = json.loads(data)
