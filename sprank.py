@@ -23,11 +23,11 @@ for row in cur:
     if to_id not in from_ids : continue# to page id not in from page id list continue because we dont need pages that links to pages still not retrive 
     links.append(row)# link list
     if to_id not in to_ids : to_ids.append(to_id)#create to ids list
-print(from_ids)
-print('-----------------')
-print(to_ids)
-print('-----------------')
-print(links)
+# print(from_ids)
+# print('-----------------')
+# print(to_ids)
+# print('-----------------')
+# print(links)
 
 # Get latest page ranks for strongly connected component
 prev_ranks = dict()# initiate dictionary for put page and rank
@@ -35,7 +35,7 @@ for node in from_ids:#get rank for every page in from ids list
     cur.execute('''SELECT new_rank FROM Pages WHERE id = ?''', (node, ))
     row = cur.fetchone()
     prev_ranks[node] = row[0]# create page rank array
-print(prev_ranks)
+#print(prev_ranks)
 sval = input('How many iterations:')
 many = 1
 try:
@@ -58,4 +58,57 @@ for i in range(many):#?
         total = total + old_rank# calulate rank totle
         next_ranks[node] = 0.0# put new rank as 0
     # print total    
-    print(total)
+    #print(total)
+    #find the number of outboud links and sent page rank down
+    for (node, old_rank) in list(prev_ranks.items()):# get id and old rank
+        give_ids = list()
+        for (from_id,to_id) in links:# get links from and to ids to a loop
+            if from_id != node: continue#check links from id is equality to old rank node  
+
+            if to_id not in to_ids: continue# check links to id exsistence in to id list
+            give_ids.append(to_id)# create to id list for node
+        if len(give_ids)<1: continue# give id not exsisting then continue
+        #print('++++++++++++++++')
+        #print(give_ids)
+        amount = old_rank/len(give_ids)# calculate amount using node old rank and node love giving number of pages
+        #print(node,old_rank,amount)
+
+        # increse the new rank of give ids using amount
+        for id in give_ids:
+        	next_ranks[id] = next_ranks[id]+amount
+    #print(next_ranks)    	
+    
+    newtot = 0
+    for (node, next_rank) in list(next_ranks.items()):
+    	newtot = newtot + next_rank# calculate new total for next ranks
+    #print('++++++++++++++++')    
+    evap = (total - newtot)/len(next_ranks)# calculate evap value
+    #print(total,newtot,evap)
+    for node in next_ranks:
+        next_ranks[node] = next_ranks[node]+evap# add evap value to next rank list
+    #print(next_ranks)
+    newtot = 0
+    for (node, next_rank) in list(next_ranks.items()):
+        newtot = newtot + next_rank# calculate new total for next ranks
+    
+    # compute the per-page average change from old rank to new rank
+    # 
+    totdiff = 0
+    for (node,old_rank) in list(prev_ranks.items()):
+        new_rank = next_ranks[node]
+        diff = abs(old_rank - new_rank)
+        totdiff = totdiff + diff
+    
+    avediff = totdiff/len(prev_ranks)
+
+    print(i+1,avediff)
+
+    prev_ranks = next_ranks
+
+# Put the final ranks back into the database
+print(list(next_ranks.items())[:5])
+cur.execute('''UPDATE Pages SET old_rank=new_rank''')
+for (id, new_rank) in list(next_ranks.items()) :
+    cur.execute('''UPDATE Pages SET new_rank=? WHERE id=?''', (new_rank, id))
+conn.commit()
+cur.close()    
